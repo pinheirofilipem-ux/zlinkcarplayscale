@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <!-- Define a escala base para o browser do Tesla -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CarPlay Fix</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Remove barras de scroll */
+            background-color: #000;
+        }
+        
+        .iframe-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        iframe {
+            border: none;
+            width: 100%;
+            height: 100%;
+            
+            /* --- AJUSTE DE ZOOM AQUI --- */
+            /* Altere o valor de 0.85 (85%) até ficar com o tamanho perfeito */
+            transform: scale(0.85); 
+            
+            /* Garante que o zoom encolhe a partir do centro */
+            transform-origin: center center; 
+        }
+    </style>
+</head>
+<body>
+
+    <div class="iframe-container">
+        <!-- Substitua o IP abaixo pelo IP/URL local da sua box ZLINK -->
+        <iframe src="https://zlink.box"></iframe>
+    </div>
+
+</body>
+</html>
