@@ -10,6 +10,7 @@
             margin: 0;
             padding: 0;
             user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         html, body {
@@ -17,7 +18,9 @@
             height: 100vh;
             overflow: hidden;
             background-color: #000;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            /* Tipografia oficial Tesla / Apple System */
+            font-family: "Gotham SSm", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: #f4f4f4;
         }
 
         .canvas-container {
@@ -38,55 +41,55 @@
             transition: width 0.1s ease, height 0.1s ease, transform 0.1s ease;
         }
 
-        /* Botão Flutuante '...' Centrado na Parte Inferior */
+        /* Botão Flutuante '...' Centrado em Baixo - Estilo Tesla UI */
         .overlay-btn {
             position: fixed;
-            bottom: 12px;
+            bottom: 14px;
             left: 50%;
             transform: translateX(-50%);
-            width: 56px;
+            width: 58px;
             height: 28px;
-            background: rgba(0, 0, 0, 0.45);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 20px;
-            color: rgba(255, 255, 255, 0.8);
-            font-size: 16px;
-            font-weight: bold;
-            letter-spacing: 2px;
+            background: rgba(23, 23, 26, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 3px;
             display: flex;
             justify-content: center;
             align-items: center;
             cursor: pointer;
             z-index: 9999;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-            transition: all 0.2s ease;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+            transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
 
         .overlay-btn:active {
             transform: translateX(-50%) scale(0.92);
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(35, 35, 40, 0.9);
             color: #fff;
         }
 
-        /* Modal Pop-up de Definições */
+        /* Modal Pop-up - Estilo OS Tesla (Dark Theme) */
         .modal-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
-            background: rgba(0, 0, 0, 0.65);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             display: flex;
             justify-content: center;
             align-items: center;
             z-index: 10000;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.25s ease;
+            transition: opacity 0.2s ease;
         }
 
         .modal-overlay.active {
@@ -95,77 +98,126 @@
         }
 
         .modal-card {
-            background: #1c1c1e;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 16px;
-            padding: 24px;
+            background: #111113;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 28px;
             width: 90%;
-            max-width: 400px;
-            color: #fff;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+            max-width: 440px;
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.9);
         }
 
         .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .modal-title {
             font-size: 18px;
             font-weight: 600;
+            letter-spacing: -0.2px;
+            color: #ffffff;
         }
 
         .control-group {
-            margin-bottom: 18px;
+            margin-bottom: 20px;
         }
 
         .control-label {
             display: flex;
             justify-content: space-between;
-            font-size: 14px;
-            color: #aaa;
+            font-size: 13px;
+            font-weight: 500;
+            color: #8e8e93;
             margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .control-label span {
-            color: #34c759;
-            font-weight: bold;
+        .control-label span.value {
+            color: #e5e5ea;
+            font-weight: 600;
+            text-transform: none;
         }
 
+        /* Campos de Input Estilo Tesla */
+        input[type=text] {
+            width: 100%;
+            background: #1c1c1e;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 10px;
+            padding: 12px 14px;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s ease;
+            user-select: text;
+        }
+
+        input[type=text]:focus {
+            border-color: #3e6ae1; /* Azul Tesla */
+        }
+
+        /* Sliders de Controlo */
         input[type=range] {
             width: 100%;
-            accent-color: #0a84ff;
+            accent-color: #3e6ae1; /* Azul Tesla */
             height: 6px;
             border-radius: 3px;
-            background: #333;
+            background: #2c2c2e;
+            appearance: none;
+            -webkit-appearance: none;
         }
 
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #ffffff;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        }
+
+        /* Grupo de Botões Tesla */
         .btn-group {
             display: flex;
-            gap: 10px;
-            margin-top: 24px;
+            gap: 12px;
+            margin-top: 28px;
         }
 
         .btn {
             flex: 1;
-            padding: 12px;
+            padding: 14px;
             border: none;
-            border-radius: 10px;
+            border-radius: 12px;
             font-weight: 600;
             font-size: 14px;
             cursor: pointer;
+            transition: all 0.15s ease;
+            text-align: center;
         }
 
         .btn-reset {
-            background: #3a3a3c;
-            color: #fff;
+            background: #2c2c2e;
+            color: #e5e5ea;
         }
 
-        .btn-close {
-            background: #0a84ff;
-            color: #fff;
+        .btn-reset:active {
+            background: #3a3a3c;
+        }
+
+        .btn-save {
+            background: #3e6ae1; /* Azul Tesla */
+            color: #ffffff;
+        }
+
+        .btn-save:active {
+            background: #3458be;
         }
     </style>
 </head>
@@ -178,14 +230,20 @@
     <div class="modal-overlay" id="settingsModal">
         <div class="modal-card">
             <div class="modal-header">
-                <div class="modal-title">Ajuste de Ecrã & Zoom</div>
+                <div class="modal-title">Configurações de Ecrã</div>
+            </div>
+
+            <!-- Campo de Endereço URL -->
+            <div class="control-group">
+                <div class="control-label">Endereço da Box / Server</div>
+                <input type="text" id="urlInput" placeholder="https://zbox.link" value="https://zbox.link">
             </div>
 
             <!-- Slider de Escala / Zoom Extra -->
             <div class="control-group">
                 <div class="control-label">
                     <span>Ajuste de Zoom</span>
-                    <span id="zoomVal">100%</span>
+                    <span class="value" id="zoomVal">100%</span>
                 </div>
                 <input type="range" id="zoomSlider" min="50" max="150" value="100">
             </div>
@@ -194,7 +252,7 @@
             <div class="control-group">
                 <div class="control-label">
                     <span>Largura Virtual (DPI)</span>
-                    <span id="widthVal">1920px</span>
+                    <span class="value" id="widthVal">1920px</span>
                 </div>
                 <input type="range" id="widthSlider" min="1280" max="2560" step="40" value="1920">
             </div>
@@ -203,22 +261,21 @@
             <div class="control-group">
                 <div class="control-label">
                     <span>Altura Virtual (DPI)</span>
-                    <span id="heightVal">1080px</span>
+                    <span class="value" id="heightVal">1080px</span>
                 </div>
                 <input type="range" id="heightSlider" min="720" max="1440" step="30" value="1080">
             </div>
 
             <div class="btn-group">
                 <button class="btn btn-reset" id="resetBtn">Repor</button>
-                <button class="btn btn-close" id="closeBtn">Concluir</button>
+                <button class="btn btn-save" id="closeBtn">Concluir</button>
             </div>
         </div>
     </div>
 
     <!-- Contentor do Iframe -->
     <div class="canvas-container">
-        <!-- Substitui pelo teu URL local/ip da box ZLINK -->
-        <iframe id="carplayFrame" src="http://192.168.3.1:7681"></iframe>
+        <iframe id="carplayFrame" src="https://zbox.link"></iframe>
     </div>
 
     <script>
@@ -228,6 +285,7 @@
         const closeBtn = document.getElementById('closeBtn');
         const resetBtn = document.getElementById('resetBtn');
 
+        const urlInput = document.getElementById('urlInput');
         const zoomSlider = document.getElementById('zoomSlider');
         const widthSlider = document.getElementById('widthSlider');
         const heightSlider = document.getElementById('heightSlider');
@@ -236,25 +294,38 @@
         const widthVal = document.getElementById('widthVal');
         const heightVal = document.getElementById('heightVal');
 
+        // Definições Padrão (URL por defeito: https://zbox.link)
         const DEFAULTS = {
+            url: "https://zbox.link",
             zoom: 100,
             width: 1920,
             height: 1080
         };
 
+        // Carregar definições do localStorage ou usar padrão
         let config = JSON.parse(localStorage.getItem('tesla_carplay_config')) || { ...DEFAULTS };
 
         function applyAndSave() {
+            // Atualizar o URL se tiver mudado
+            if (frame.src !== config.url) {
+                frame.src = config.url;
+            }
+
+            // Atualizar dimensões virtuais do iframe
             frame.style.width = `${config.width}px`;
             frame.style.height = `${config.height}px`;
 
+            // Calcular a escala automática de enquadramento
             const scaleX = window.innerWidth / config.width;
             const scaleY = window.innerHeight / config.height;
             const baseScale = Math.min(scaleX, scaleY);
 
+            // Aplicar modificador de zoom
             const finalScale = baseScale * (config.zoom / 100);
             frame.style.transform = `scale(${finalScale})`;
 
+            // Atualizar valores na interface
+            urlInput.value = config.url;
             zoomVal.textContent = `${config.zoom}%`;
             widthVal.textContent = `${config.width}px`;
             heightVal.textContent = `${config.height}px`;
@@ -263,9 +334,21 @@
             widthSlider.value = config.width;
             heightSlider.value = config.height;
 
+            // Guardar alterações no browser do Tesla
             localStorage.setItem('tesla_carplay_config', JSON.stringify(config));
         }
 
+        // Alteração do URL
+        urlInput.addEventListener('change', (e) => {
+            let val = e.target.value.trim();
+            if (val && !val.startsWith('http://') && !val.startsWith('https://')) {
+                val = 'http://' + val;
+            }
+            config.url = val || DEFAULTS.url;
+            applyAndSave();
+        });
+
+        // Sliders
         zoomSlider.addEventListener('input', (e) => {
             config.zoom = parseInt(e.target.value);
             applyAndSave();
@@ -281,15 +364,26 @@
             applyAndSave();
         });
 
+        // Controlo do Pop-up
         openBtn.addEventListener('click', () => modal.classList.add('active'));
-        closeBtn.addEventListener('click', () => modal.classList.remove('active'));
+        closeBtn.addEventListener('click', () => {
+            // Garante que guarda a entrada do URL se o utilizador não tiver premido Enter
+            if (urlInput.value !== config.url) {
+                urlInput.dispatchEvent(new Event('change'));
+            }
+            modal.classList.remove('active');
+        });
 
+        // Botão Repor Definições
         resetBtn.addEventListener('click', () => {
             config = { ...DEFAULTS };
             applyAndSave();
         });
 
+        // Atualizar automaticamente ao redimensionar
         window.addEventListener('resize', applyAndSave);
+        
+        // Inicializar ao carregar
         window.addEventListener('load', applyAndSave);
     </script>
 
