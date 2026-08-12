@@ -18,7 +18,6 @@
             height: 100vh;
             overflow: hidden;
             background-color: #000;
-            /* Tipografia oficial Tesla / Apple System */
             font-family: "Gotham SSm", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             color: #f4f4f4;
         }
@@ -41,7 +40,7 @@
             transition: width 0.1s ease, height 0.1s ease, transform 0.1s ease;
         }
 
-        /* Botão Flutuante '...' Centrado em Baixo - Estilo Tesla UI */
+        /* Botão Flutuante '...' Centrado em Baixo */
         .overlay-btn {
             position: fixed;
             bottom: 14px;
@@ -73,7 +72,7 @@
             color: #fff;
         }
 
-        /* Modal Pop-up - Estilo OS Tesla (Dark Theme) */
+        /* Modal Pop-up - Estilo Tesla */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -111,7 +110,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 24px;
+            margin-bottom: 16px;
             padding-bottom: 12px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         }
@@ -119,12 +118,29 @@
         .modal-title {
             font-size: 18px;
             font-weight: 600;
-            letter-spacing: -0.2px;
             color: #ffffff;
         }
 
-        .control-group {
+        /* Caixas de Informação / Status do IP */
+        .status-box {
+            background: #1c1c1e;
+            border-left: 3px solid #3e6ae1;
+            border-radius: 8px;
+            padding: 10px 12px;
             margin-bottom: 20px;
+            font-size: 12px;
+            color: #a1a1a6;
+            word-break: break-all;
+        }
+
+        .status-box strong {
+            color: #ffffff;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .control-group {
+            margin-bottom: 18px;
         }
 
         .control-label {
@@ -144,7 +160,6 @@
             text-transform: none;
         }
 
-        /* Campos de Input Estilo Tesla */
         input[type=text] {
             width: 100%;
             background: #1c1c1e;
@@ -159,13 +174,12 @@
         }
 
         input[type=text]:focus {
-            border-color: #3e6ae1; /* Azul Tesla */
+            border-color: #3e6ae1;
         }
 
-        /* Sliders de Controlo */
         input[type=range] {
             width: 100%;
-            accent-color: #3e6ae1; /* Azul Tesla */
+            accent-color: #3e6ae1;
             height: 6px;
             border-radius: 3px;
             background: #2c2c2e;
@@ -180,14 +194,12 @@
             border-radius: 50%;
             background: #ffffff;
             cursor: pointer;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
         }
 
-        /* Grupo de Botões Tesla */
         .btn-group {
             display: flex;
             gap: 12px;
-            margin-top: 28px;
+            margin-top: 24px;
         }
 
         .btn {
@@ -198,7 +210,6 @@
             font-weight: 600;
             font-size: 14px;
             cursor: pointer;
-            transition: all 0.15s ease;
             text-align: center;
         }
 
@@ -207,23 +218,15 @@
             color: #e5e5ea;
         }
 
-        .btn-reset:active {
-            background: #3a3a3c;
-        }
-
         .btn-save {
-            background: #3e6ae1; /* Azul Tesla */
+            background: #3e6ae1;
             color: #ffffff;
-        }
-
-        .btn-save:active {
-            background: #3458be;
         }
     </style>
 </head>
 <body>
 
-    <!-- Botão Overlay (...) Centrado em Baixo -->
+    <!-- Botão Overlay (...) -->
     <div class="overlay-btn" id="openMenuBtn">•••</div>
 
     <!-- Modal de Definições -->
@@ -233,13 +236,19 @@
                 <div class="modal-title">Configurações de Ecrã</div>
             </div>
 
+            <!-- Label Indicativa de URL / IP Detectado -->
+            <div class="status-box">
+                <strong>Endereço Atual Ativo:</strong>
+                <span id="activeUrlLabel">A carregar...</span>
+            </div>
+
             <!-- Campo de Endereço URL -->
             <div class="control-group">
                 <div class="control-label">Endereço da Box / Server</div>
                 <input type="text" id="urlInput" placeholder="https://zbox.link" value="https://zbox.link">
             </div>
 
-            <!-- Slider de Escala / Zoom Extra -->
+            <!-- Sliders -->
             <div class="control-group">
                 <div class="control-label">
                     <span>Ajuste de Zoom</span>
@@ -248,7 +257,6 @@
                 <input type="range" id="zoomSlider" min="50" max="150" value="100">
             </div>
 
-            <!-- Slider de Largura Virtual -->
             <div class="control-group">
                 <div class="control-label">
                     <span>Largura Virtual (DPI)</span>
@@ -257,7 +265,6 @@
                 <input type="range" id="widthSlider" min="1280" max="2560" step="40" value="1920">
             </div>
 
-            <!-- Slider de Altura Virtual -->
             <div class="control-group">
                 <div class="control-label">
                     <span>Altura Virtual (DPI)</span>
@@ -285,6 +292,7 @@
         const closeBtn = document.getElementById('closeBtn');
         const resetBtn = document.getElementById('resetBtn');
 
+        const activeUrlLabel = document.getElementById('activeUrlLabel');
         const urlInput = document.getElementById('urlInput');
         const zoomSlider = document.getElementById('zoomSlider');
         const widthSlider = document.getElementById('widthSlider');
@@ -294,7 +302,6 @@
         const widthVal = document.getElementById('widthVal');
         const heightVal = document.getElementById('heightVal');
 
-        // Definições Padrão (URL por defeito: https://zbox.link)
         const DEFAULTS = {
             url: "https://zbox.link",
             zoom: 100,
@@ -302,29 +309,34 @@
             height: 1080
         };
 
-        // Carregar definições do localStorage ou usar padrão
         let config = JSON.parse(localStorage.getItem('tesla_carplay_config')) || { ...DEFAULTS };
 
+        function updateUrlLabel() {
+            try {
+                // Tenta ler o URL real caso esteja no mesmo domínio
+                const currentHref = frame.contentWindow.location.href;
+                activeUrlLabel.textContent = currentHref;
+            } catch (e) {
+                // Se o browser bloquear por razões de Cross-Origin (redirecionamento para IP diferente)
+                activeUrlLabel.textContent = `${config.url} (Redirecionado para IP da Box)`;
+            }
+        }
+
         function applyAndSave() {
-            // Atualizar o URL se tiver mudado
             if (frame.src !== config.url) {
                 frame.src = config.url;
             }
 
-            // Atualizar dimensões virtuais do iframe
             frame.style.width = `${config.width}px`;
             frame.style.height = `${config.height}px`;
 
-            // Calcular a escala automática de enquadramento
             const scaleX = window.innerWidth / config.width;
             const scaleY = window.innerHeight / config.height;
             const baseScale = Math.min(scaleX, scaleY);
 
-            // Aplicar modificador de zoom
             const finalScale = baseScale * (config.zoom / 100);
             frame.style.transform = `scale(${finalScale})`;
 
-            // Atualizar valores na interface
             urlInput.value = config.url;
             zoomVal.textContent = `${config.zoom}%`;
             widthVal.textContent = `${config.width}px`;
@@ -334,11 +346,10 @@
             widthSlider.value = config.width;
             heightSlider.value = config.height;
 
-            // Guardar alterações no browser do Tesla
+            updateUrlLabel();
             localStorage.setItem('tesla_carplay_config', JSON.stringify(config));
         }
 
-        // Alteração do URL
         urlInput.addEventListener('change', (e) => {
             let val = e.target.value.trim();
             if (val && !val.startsWith('http://') && !val.startsWith('https://')) {
@@ -348,7 +359,6 @@
             applyAndSave();
         });
 
-        // Sliders
         zoomSlider.addEventListener('input', (e) => {
             config.zoom = parseInt(e.target.value);
             applyAndSave();
@@ -364,26 +374,27 @@
             applyAndSave();
         });
 
-        // Controlo do Pop-up
-        openBtn.addEventListener('click', () => modal.classList.add('active'));
+        openBtn.addEventListener('click', () => {
+            updateUrlLabel();
+            modal.classList.add('active');
+        });
+
         closeBtn.addEventListener('click', () => {
-            // Garante que guarda a entrada do URL se o utilizador não tiver premido Enter
             if (urlInput.value !== config.url) {
                 urlInput.dispatchEvent(new Event('change'));
             }
             modal.classList.remove('active');
         });
 
-        // Botão Repor Definições
         resetBtn.addEventListener('click', () => {
             config = { ...DEFAULTS };
             applyAndSave();
         });
 
-        // Atualizar automaticamente ao redimensionar
+        // Quando o iframe acaba de carregar/redirecionar
+        frame.addEventListener('load', updateUrlLabel);
+
         window.addEventListener('resize', applyAndSave);
-        
-        // Inicializar ao carregar
         window.addEventListener('load', applyAndSave);
     </script>
 
