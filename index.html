@@ -3,15 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tesla CarPlay Responsive Wrapper</title>
+    <title>Tesla CarPlay Wrapper Pro</title>
     <style>
-        html, body {
+        * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
+            user-select: none;
+        }
+
+        html, body {
             width: 100vw;
             height: 100vh;
             overflow: hidden;
             background-color: #000;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
 
         .canvas-container {
@@ -24,56 +30,267 @@
             align-items: center;
         }
 
-        /* Iframe de alta resolução virtual */
         iframe {
             border: none;
-            width: 1920px;
-            height: 1080px;
             position: absolute;
             transform-origin: center center;
             touch-action: manipulation;
-            transition: transform 0.2s ease-in-out;
+            transition: width 0.1s ease, height 0.1s ease, transform 0.1s ease;
+        }
+
+        /* Botão Flutuante '...' Centrado na Parte Inferior */
+        .overlay-btn {
+            position: fixed;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 56px;
+            height: 28px;
+            background: rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 16px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            z-index: 9999;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            transition: all 0.2s ease;
+        }
+
+        .overlay-btn:active {
+            transform: translateX(-50%) scale(0.92);
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+        }
+
+        /* Modal Pop-up de Definições */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: #1c1c1e;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 16px;
+            padding: 24px;
+            width: 90%;
+            max-width: 400px;
+            color: #fff;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .control-group {
+            margin-bottom: 18px;
+        }
+
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: #aaa;
+            margin-bottom: 8px;
+        }
+
+        .control-label span {
+            color: #34c759;
+            font-weight: bold;
+        }
+
+        input[type=range] {
+            width: 100%;
+            accent-color: #0a84ff;
+            height: 6px;
+            border-radius: 3px;
+            background: #333;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 24px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .btn-reset {
+            background: #3a3a3c;
+            color: #fff;
+        }
+
+        .btn-close {
+            background: #0a84ff;
+            color: #fff;
         }
     </style>
 </head>
 <body>
 
+    <!-- Botão Overlay (...) Centrado em Baixo -->
+    <div class="overlay-btn" id="openMenuBtn">•••</div>
+
+    <!-- Modal de Definições -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title">Ajuste de Ecrã & Zoom</div>
+            </div>
+
+            <!-- Slider de Escala / Zoom Extra -->
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Ajuste de Zoom</span>
+                    <span id="zoomVal">100%</span>
+                </div>
+                <input type="range" id="zoomSlider" min="50" max="150" value="100">
+            </div>
+
+            <!-- Slider de Largura Virtual -->
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Largura Virtual (DPI)</span>
+                    <span id="widthVal">1920px</span>
+                </div>
+                <input type="range" id="widthSlider" min="1280" max="2560" step="40" value="1920">
+            </div>
+
+            <!-- Slider de Altura Virtual -->
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Altura Virtual (DPI)</span>
+                    <span id="heightVal">1080px</span>
+                </div>
+                <input type="range" id="heightSlider" min="720" max="1440" step="30" value="1080">
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-reset" id="resetBtn">Repor</button>
+                <button class="btn btn-close" id="closeBtn">Concluir</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contentor do Iframe -->
     <div class="canvas-container">
-        <!-- Substitui pelo IP/URL da tua box -->
-        <iframe id="carplay-frame" src="http://192.168.3.1:7681"></iframe>
+        <!-- Substitui pelo teu URL local/ip da box ZLINK -->
+        <iframe id="carplayFrame" src="http://192.168.3.1:7681"></iframe>
     </div>
 
     <script>
-        function adjustLayout() {
-            const iframe = document.getElementById('carplay-frame');
-            
-            // 1. Obter as dimensões exatas da área navegável em tempo real
-            const currentWidth = window.innerWidth;
-            const currentHeight = window.innerHeight;
+        const frame = document.getElementById('carplayFrame');
+        const modal = document.getElementById('settingsModal');
+        const openBtn = document.getElementById('openMenuBtn');
+        const closeBtn = document.getElementById('closeBtn');
+        const resetBtn = document.getElementById('resetBtn');
 
-            // 2. Dimensões base do nosso canvas Full HD
-            const baseWidth = 1920;
-            const baseHeight = 1080;
+        const zoomSlider = document.getElementById('zoomSlider');
+        const widthSlider = document.getElementById('widthSlider');
+        const heightSlider = document.getElementById('heightSlider');
 
-            // 3. Calcular a escala necessária para a largura e para a altura
-            const scaleX = currentWidth / baseWidth;
-            const scaleY = currentHeight / baseHeight;
+        const zoomVal = document.getElementById('zoomVal');
+        const widthVal = document.getElementById('widthVal');
+        const heightVal = document.getElementById('heightVal');
 
-            /* 
-               Usamos Math.min() para garantir que toda a imagem cabe no ecrã 
-               sem cortar nada. 
-               Se preferires que preencha TUDO (mesmo esticando/cortando 1-2%), 
-               podes mudar para Math.max().
-            */
-            const scale = Math.min(scaleX, scaleY);
+        const DEFAULTS = {
+            zoom: 100,
+            width: 1920,
+            height: 1080
+        };
 
-            // 4. Aplica a escala dinâmica calculada para a viewport atual
-            iframe.style.transform = `scale(${scale})`;
+        let config = JSON.parse(localStorage.getItem('tesla_carplay_config')) || { ...DEFAULTS };
+
+        function applyAndSave() {
+            frame.style.width = `${config.width}px`;
+            frame.style.height = `${config.height}px`;
+
+            const scaleX = window.innerWidth / config.width;
+            const scaleY = window.innerHeight / config.height;
+            const baseScale = Math.min(scaleX, scaleY);
+
+            const finalScale = baseScale * (config.zoom / 100);
+            frame.style.transform = `scale(${finalScale})`;
+
+            zoomVal.textContent = `${config.zoom}%`;
+            widthVal.textContent = `${config.width}px`;
+            heightVal.textContent = `${config.height}px`;
+
+            zoomSlider.value = config.zoom;
+            widthSlider.value = config.width;
+            heightSlider.value = config.height;
+
+            localStorage.setItem('tesla_carplay_config', JSON.stringify(config));
         }
 
-        // Corre ao carregar e sempre que a janela muda de tamanho/modo
-        window.addEventListener('load', adjustLayout);
-        window.addEventListener('resize', adjustLayout);
+        zoomSlider.addEventListener('input', (e) => {
+            config.zoom = parseInt(e.target.value);
+            applyAndSave();
+        });
+
+        widthSlider.addEventListener('input', (e) => {
+            config.width = parseInt(e.target.value);
+            applyAndSave();
+        });
+
+        heightSlider.addEventListener('input', (e) => {
+            config.height = parseInt(e.target.value);
+            applyAndSave();
+        });
+
+        openBtn.addEventListener('click', () => modal.classList.add('active'));
+        closeBtn.addEventListener('click', () => modal.classList.remove('active'));
+
+        resetBtn.addEventListener('click', () => {
+            config = { ...DEFAULTS };
+            applyAndSave();
+        });
+
+        window.addEventListener('resize', applyAndSave);
+        window.addEventListener('load', applyAndSave);
     </script>
 
 </body>
