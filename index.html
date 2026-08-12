@@ -2,45 +2,79 @@
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
-    <!-- Define a escala base para o browser do Tesla -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CarPlay Fix</title>
+    <title>Tesla CarPlay Responsive Wrapper</title>
     <style>
-        * {
+        html, body {
             margin: 0;
             padding: 0;
-            overflow: hidden; /* Remove barras de scroll */
-            background-color: #000;
-        }
-        
-        .iframe-container {
             width: 100vw;
             height: 100vh;
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        .canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
             display: flex;
             justify-content: center;
             align-items: center;
         }
 
+        /* Iframe de alta resolução virtual */
         iframe {
             border: none;
-            width: 100%;
-            height: 100%;
-            
-            /* --- AJUSTE DE ZOOM AQUI --- */
-            /* Altere o valor de 0.85 (85%) até ficar com o tamanho perfeito */
-            transform: scale(0.75); 
-            
-            /* Garante que o zoom encolhe a partir do centro */
-            transform-origin: center center; 
+            width: 1920px;
+            height: 1080px;
+            position: absolute;
+            transform-origin: center center;
+            touch-action: manipulation;
+            transition: transform 0.2s ease-in-out;
         }
     </style>
 </head>
 <body>
 
-    <div class="iframe-container">
-        <!-- Substitua o IP abaixo pelo IP/URL local da sua box ZLINK -->
-        <iframe src="https://zbox.link"></iframe>
+    <div class="canvas-container">
+        <!-- Substitui pelo IP/URL da tua box -->
+        <iframe id="carplay-frame" src="http://192.168.3.1:7681"></iframe>
     </div>
+
+    <script>
+        function adjustLayout() {
+            const iframe = document.getElementById('carplay-frame');
+            
+            // 1. Obter as dimensões exatas da área navegável em tempo real
+            const currentWidth = window.innerWidth;
+            const currentHeight = window.innerHeight;
+
+            // 2. Dimensões base do nosso canvas Full HD
+            const baseWidth = 1920;
+            const baseHeight = 1080;
+
+            // 3. Calcular a escala necessária para a largura e para a altura
+            const scaleX = currentWidth / baseWidth;
+            const scaleY = currentHeight / baseHeight;
+
+            /* 
+               Usamos Math.min() para garantir que toda a imagem cabe no ecrã 
+               sem cortar nada. 
+               Se preferires que preencha TUDO (mesmo esticando/cortando 1-2%), 
+               podes mudar para Math.max().
+            */
+            const scale = Math.min(scaleX, scaleY);
+
+            // 4. Aplica a escala dinâmica calculada para a viewport atual
+            iframe.style.transform = `scale(${scale})`;
+        }
+
+        // Corre ao carregar e sempre que a janela muda de tamanho/modo
+        window.addEventListener('load', adjustLayout);
+        window.addEventListener('resize', adjustLayout);
+    </script>
 
 </body>
 </html>
