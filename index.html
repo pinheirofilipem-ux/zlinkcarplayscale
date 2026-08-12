@@ -4,6 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Tesla CarPlay Wrapper Pro</title>
+    <!--
+        Alterações face à versão original:
+        1. iframe com allow/allowfullscreen (o cliente da box pode pedir fullscreen).
+        2. Escala pode passar de 1x (zoom até 400%) e viewport virtual pode descer
+           até 320px — o stream MJPEG tem tamanho fixo, é preciso AMPLIAR, não reduzir.
+        3. Modos "Ajustar" (contain) e "Preencher" (cover).
+        4. Pan X/Y, para reposicionar quando o zoom corta a zona errada.
+        5. Corrigido o bug que recarregava o iframe a cada mexida de slider
+           (frame.src devolve o URL normalizado, a comparação era sempre verdadeira).
+        6. Removido backdrop-filter: recalcular blur por cima de um stream MJPEG
+           a 20-30 fps mata o compositor do browser do Tesla.
+        7. Botão explícito de recarregar, com passagem por about:blank para a box
+           libertar a ligação MJPEG anterior.
+    -->
     <style>
         * {
             box-sizing: border-box;
@@ -27,20 +41,25 @@
             height: 100vh;
             position: relative;
             overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
         }
 
+        /* Centragem explícita: não depender do static position de um
+           position:absolute dentro de um contentor flex. */
         iframe {
             border: none;
             position: absolute;
+            top: 50%;
+            left: 50%;
             transform-origin: center center;
             touch-action: manipulation;
-            transition: width 0.1s ease, height 0.1s ease, transform 0.1s ease;
+            will-change: transform;
+            transition: none;          /* transições aqui = re-raster do stream a cada frame */
+            background: #000;
         }
 
-        /* Botão Flutuante '...' Centrado em Baixo */
+        /* Botão flutuante '...' centrado em baixo.
+           Sem backdrop-filter: fica por cima do stream e obrigaria o browser
+           a reler e desfocar o frame composto 20-30x por segundo. */
         .overlay-btn {
             position: fixed;
             bottom: 14px;
@@ -48,9 +67,7 @@
             transform: translateX(-50%);
             width: 58px;
             height: 28px;
-            background: rgba(23, 23, 26, 0.65);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
+            background: rgba(23, 23, 26, 0.85);
             border: 1px solid rgba(255, 255, 255, 0.12);
             border-radius: 14px;
             color: rgba(255, 255, 255, 0.7);
@@ -63,25 +80,22 @@
             cursor: pointer;
             z-index: 9999;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
-            transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
 
         .overlay-btn:active {
             transform: translateX(-50%) scale(0.92);
-            background: rgba(35, 35, 40, 0.9);
+            background: rgba(35, 35, 40, 0.95);
             color: #fff;
         }
 
-        /* Modal Pop-up - Estilo Tesla */
+        /* Modal */
         .modal-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
-            background: rgba(0, 0, 0, 0.75);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            background: rgba(0, 0, 0, 0.88);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -100,9 +114,11 @@
             background: #111113;
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 20px;
-            padding: 28px;
-            width: 90%;
-            max-width: 440px;
+            padding: 24px;
+            width: 92%;
+            max-width: 480px;
+            max-height: 88vh;
+            overflow-y: auto;
             box-shadow: 0 24px 48px rgba(0, 0, 0, 0.9);
         }
 
@@ -121,7 +137,6 @@
             color: #ffffff;
         }
 
-        /* Caixas de Informação / Status do IP */
         .status-box {
             background: #1c1c1e;
             border-left: 3px solid #3e6ae1;
@@ -129,6 +144,7 @@
             padding: 10px 12px;
             margin-bottom: 20px;
             font-size: 12px;
+            line-height: 1.5;
             color: #a1a1a6;
             word-break: break-all;
         }
@@ -137,6 +153,13 @@
             color: #ffffff;
             display: block;
             margin-bottom: 2px;
+        }
+
+        .status-metrics {
+            display: block;
+            margin-top: 6px;
+            color: #6e6e73;
+            font-variant-numeric: tabular-nums;
         }
 
         .control-group {
@@ -158,6 +181,14 @@
             color: #e5e5ea;
             font-weight: 600;
             text-transform: none;
+        }
+
+        .hint {
+            font-size: 11px;
+            color: #6e6e73;
+            margin-top: 6px;
+            text-transform: none;
+            letter-spacing: 0;
         }
 
         input[type=text] {
@@ -198,8 +229,13 @@
 
         .btn-group {
             display: flex;
-            gap: 12px;
+            gap: 10px;
             margin-top: 24px;
+        }
+
+        .btn-group.compact {
+            margin-top: 0;
+            gap: 8px;
         }
 
         .btn {
@@ -213,6 +249,11 @@
             text-align: center;
         }
 
+        .btn.small {
+            padding: 10px 6px;
+            font-size: 13px;
+        }
+
         .btn-reset {
             background: #2c2c2e;
             color: #e5e5ea;
@@ -222,55 +263,99 @@
             background: #3e6ae1;
             color: #ffffff;
         }
+
+        .btn.active {
+            background: #3e6ae1;
+            color: #ffffff;
+        }
     </style>
 </head>
 <body>
 
-    <!-- Botão Overlay (...) -->
     <div class="overlay-btn" id="openMenuBtn">•••</div>
 
-    <!-- Modal de Definições -->
     <div class="modal-overlay" id="settingsModal">
         <div class="modal-card">
             <div class="modal-header">
                 <div class="modal-title">Configurações de Ecrã</div>
             </div>
 
-            <!-- Label Indicativa de URL / IP Detectado -->
             <div class="status-box">
-                <strong>Endereço Atual Ativo:</strong>
+                <strong>Endereço ativo</strong>
                 <span id="activeUrlLabel">A carregar...</span>
+                <span class="status-metrics" id="statusMetrics"></span>
             </div>
 
-            <!-- Campo de Endereço URL -->
             <div class="control-group">
-                <div class="control-label">Endereço da Box / Server</div>
+                <div class="control-label"><span>Endereço da box</span></div>
                 <input type="text" id="urlInput" placeholder="https://zbox.link" value="https://zbox.link">
+                <div class="btn-group compact" style="margin-top:10px">
+                    <button class="btn btn-reset small" id="reloadBtn">Recarregar ligação</button>
+                </div>
+                <div class="hint">Recarregar corta a ligação MJPEG atual e abre uma nova. Usa isto se o stream congelar.</div>
             </div>
 
-            <!-- Sliders -->
+            <div class="control-group">
+                <div class="control-label"><span>Viewport virtual</span></div>
+                <div class="btn-group compact">
+                    <button class="btn btn-reset small preset" data-w="800"  data-h="480">800×480</button>
+                    <button class="btn btn-reset small preset" data-w="1024" data-h="600">1024×600</button>
+                    <button class="btn btn-reset small preset" data-w="1280" data-h="720">1280×720</button>
+                    <button class="btn btn-reset small preset" data-w="0"    data-h="0">Nativo</button>
+                </div>
+                <div class="hint">O stream tem tamanho fixo. Viewport pequeno = escala acima de 1x = imagem grande.</div>
+            </div>
+
+            <div class="control-group">
+                <div class="control-label"><span>Modo de ajuste</span></div>
+                <div class="btn-group compact">
+                    <button class="btn btn-reset small" id="fitContain">Ajustar</button>
+                    <button class="btn btn-reset small" id="fitCover">Preencher</button>
+                </div>
+                <div class="hint">Preencher enche o ecrã e corta o excedente. Ajustar mostra tudo com barras pretas.</div>
+            </div>
+
             <div class="control-group">
                 <div class="control-label">
-                    <span>Ajuste de Zoom</span>
+                    <span>Zoom</span>
                     <span class="value" id="zoomVal">100%</span>
                 </div>
-                <input type="range" id="zoomSlider" min="50" max="150" value="100">
+                <input type="range" id="zoomSlider" min="50" max="400" step="5" value="100">
             </div>
 
             <div class="control-group">
                 <div class="control-label">
-                    <span>Largura Virtual (DPI)</span>
+                    <span>Largura virtual</span>
                     <span class="value" id="widthVal">1920px</span>
                 </div>
-                <input type="range" id="widthSlider" min="1280" max="2560" step="40" value="1920">
+                <input type="range" id="widthSlider" min="320" max="2560" step="20" value="1920">
             </div>
 
             <div class="control-group">
                 <div class="control-label">
-                    <span>Altura Virtual (DPI)</span>
+                    <span>Altura virtual</span>
                     <span class="value" id="heightVal">1080px</span>
                 </div>
-                <input type="range" id="heightSlider" min="720" max="1440" step="30" value="1080">
+                <input type="range" id="heightSlider" min="240" max="1440" step="20" value="1080">
+            </div>
+
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Posição horizontal</span>
+                    <span class="value" id="offsetXVal">0px</span>
+                </div>
+                <input type="range" id="offsetXSlider" min="-1000" max="1000" step="10" value="0">
+            </div>
+
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Posição vertical</span>
+                    <span class="value" id="offsetYVal">0px</span>
+                </div>
+                <input type="range" id="offsetYSlider" min="-1000" max="1000" step="10" value="0">
+                <div class="btn-group compact" style="margin-top:10px">
+                    <button class="btn btn-reset small" id="centerBtn">Centrar</button>
+                </div>
             </div>
 
             <div class="btn-group">
@@ -280,9 +365,12 @@
         </div>
     </div>
 
-    <!-- Contentor do Iframe -->
     <div class="canvas-container">
-        <iframe id="carplayFrame" src="https://zbox.link"></iframe>
+        <iframe id="carplayFrame"
+                src="https://zbox.link"
+                allow="autoplay; fullscreen; encrypted-media; microphone; accelerometer; gyroscope"
+                allowfullscreen
+                scrolling="no"></iframe>
     </div>
 
     <script>
@@ -291,111 +379,222 @@
         const openBtn = document.getElementById('openMenuBtn');
         const closeBtn = document.getElementById('closeBtn');
         const resetBtn = document.getElementById('resetBtn');
+        const reloadBtn = document.getElementById('reloadBtn');
+        const centerBtn = document.getElementById('centerBtn');
+        const fitContainBtn = document.getElementById('fitContain');
+        const fitCoverBtn = document.getElementById('fitCover');
 
         const activeUrlLabel = document.getElementById('activeUrlLabel');
+        const statusMetrics = document.getElementById('statusMetrics');
         const urlInput = document.getElementById('urlInput');
+
         const zoomSlider = document.getElementById('zoomSlider');
         const widthSlider = document.getElementById('widthSlider');
         const heightSlider = document.getElementById('heightSlider');
+        const offsetXSlider = document.getElementById('offsetXSlider');
+        const offsetYSlider = document.getElementById('offsetYSlider');
 
         const zoomVal = document.getElementById('zoomVal');
         const widthVal = document.getElementById('widthVal');
         const heightVal = document.getElementById('heightVal');
+        const offsetXVal = document.getElementById('offsetXVal');
+        const offsetYVal = document.getElementById('offsetYVal');
 
         const DEFAULTS = {
             url: "https://zbox.link",
             zoom: 100,
-            width: 1920,
-            height: 1080
+            width: 1280,          // ponto de partida realista para um stream MJPEG
+            height: 720,
+            fit: "cover",         // "contain" mostra tudo | "cover" enche o ecrã
+            offsetX: 0,
+            offsetY: 0
         };
 
-        let config = JSON.parse(localStorage.getItem('tesla_carplay_config')) || { ...DEFAULTS };
+        // Merge com DEFAULTS para não perder chaves novas em configs já guardadas.
+        let stored = null;
+        try { stored = JSON.parse(localStorage.getItem('tesla_carplay_config')); } catch (e) { stored = null; }
+        let config = { ...DEFAULTS, ...(stored || {}) };
 
-        function updateUrlLabel() {
+        // Guarda o URL efetivamente carregado. Não usar frame.src para isto:
+        // o getter devolve o URL normalizado ("https://zbox.link/"), pelo que a
+        // comparação com config.url dava sempre diferente e recarregava o iframe
+        // a cada input de slider, matando a ligação MJPEG.
+        let loadedUrl = frame.getAttribute('src');
+
+        function updateStatus(scale) {
+            let href;
             try {
-                // Tenta ler o URL real caso esteja no mesmo domínio
-                const currentHref = frame.contentWindow.location.href;
-                activeUrlLabel.textContent = currentHref;
+                href = frame.contentWindow.location.href;
             } catch (e) {
-                // Se o browser bloquear por razões de Cross-Origin (redirecionamento para IP diferente)
-                activeUrlLabel.textContent = `${config.url} (Redirecionado para IP da Box)`;
+                href = config.url + ' (cross-origin — redirecionado para a box)';
             }
+            activeUrlLabel.textContent = href;
+            statusMetrics.textContent =
+                'Janela ' + window.innerWidth + '×' + window.innerHeight +
+                ' · DPR ' + (window.devicePixelRatio || 1) +
+                ' · Viewport ' + config.width + '×' + config.height +
+                ' · Escala ' + scale.toFixed(2) + '×' +
+                ' · ' + (config.fit === 'cover' ? 'Preencher' : 'Ajustar');
+        }
+
+        function refreshActiveStates() {
+            fitContainBtn.classList.toggle('active', config.fit === 'contain');
+            fitCoverBtn.classList.toggle('active', config.fit === 'cover');
+
+            document.querySelectorAll('.preset').forEach(function (btn) {
+                const w = parseInt(btn.dataset.w, 10) || window.innerWidth;
+                const h = parseInt(btn.dataset.h, 10) || window.innerHeight;
+                btn.classList.toggle('active', config.width === w && config.height === h);
+            });
         }
 
         function applyAndSave() {
-            if (frame.src !== config.url) {
+            if (loadedUrl !== config.url) {
+                loadedUrl = config.url;
                 frame.src = config.url;
             }
 
-            frame.style.width = `${config.width}px`;
-            frame.style.height = `${config.height}px`;
+            frame.style.width  = config.width + 'px';
+            frame.style.height = config.height + 'px';
 
-            const scaleX = window.innerWidth / config.width;
+            const scaleX = window.innerWidth  / config.width;
             const scaleY = window.innerHeight / config.height;
-            const baseScale = Math.min(scaleX, scaleY);
+            const baseScale = (config.fit === 'cover')
+                ? Math.max(scaleX, scaleY)
+                : Math.min(scaleX, scaleY);
 
             const finalScale = baseScale * (config.zoom / 100);
-            frame.style.transform = `scale(${finalScale})`;
+
+            // translate(-50%,-50%) usa o tamanho não escalado do iframe e coloca
+            // o seu centro no ponto top:50%/left:50%. O offset é aplicado em
+            // pixéis de ecrã, antes da escala.
+            frame.style.transform =
+                'translate(-50%, -50%) translate(' + config.offsetX + 'px, ' + config.offsetY + 'px) scale(' + finalScale + ')';
 
             urlInput.value = config.url;
-            zoomVal.textContent = `${config.zoom}%`;
-            widthVal.textContent = `${config.width}px`;
-            heightVal.textContent = `${config.height}px`;
+            zoomVal.textContent    = config.zoom + '%';
+            widthVal.textContent   = config.width + 'px';
+            heightVal.textContent  = config.height + 'px';
+            offsetXVal.textContent = config.offsetX + 'px';
+            offsetYVal.textContent = config.offsetY + 'px';
 
-            zoomSlider.value = config.zoom;
-            widthSlider.value = config.width;
-            heightSlider.value = config.height;
+            zoomSlider.value    = config.zoom;
+            widthSlider.value   = config.width;
+            heightSlider.value  = config.height;
+            offsetXSlider.value = config.offsetX;
+            offsetYSlider.value = config.offsetY;
 
-            updateUrlLabel();
-            localStorage.setItem('tesla_carplay_config', JSON.stringify(config));
+            refreshActiveStates();
+            updateStatus(finalScale);
+
+            try {
+                localStorage.setItem('tesla_carplay_config', JSON.stringify(config));
+            } catch (e) { /* localStorage indisponível — ignorar */ }
         }
 
-        urlInput.addEventListener('change', (e) => {
+        function reloadFrame() {
+            const target = config.url;
+            frame.src = 'about:blank';   // força a box a libertar a ligação MJPEG anterior
+            setTimeout(function () {
+                loadedUrl = target;
+                frame.src = target;
+            }, 150);
+        }
+
+        urlInput.addEventListener('change', function (e) {
             let val = e.target.value.trim();
-            if (val && !val.startsWith('http://') && !val.startsWith('https://')) {
+            if (val && !/^https?:\/\//i.test(val)) {
                 val = 'http://' + val;
             }
             config.url = val || DEFAULTS.url;
             applyAndSave();
         });
 
-        zoomSlider.addEventListener('input', (e) => {
-            config.zoom = parseInt(e.target.value);
+        zoomSlider.addEventListener('input', function (e) {
+            config.zoom = parseInt(e.target.value, 10);
             applyAndSave();
         });
 
-        widthSlider.addEventListener('input', (e) => {
-            config.width = parseInt(e.target.value);
+        widthSlider.addEventListener('input', function (e) {
+            config.width = parseInt(e.target.value, 10);
             applyAndSave();
         });
 
-        heightSlider.addEventListener('input', (e) => {
-            config.height = parseInt(e.target.value);
+        heightSlider.addEventListener('input', function (e) {
+            config.height = parseInt(e.target.value, 10);
             applyAndSave();
         });
 
-        openBtn.addEventListener('click', () => {
-            updateUrlLabel();
+        offsetXSlider.addEventListener('input', function (e) {
+            config.offsetX = parseInt(e.target.value, 10);
+            applyAndSave();
+        });
+
+        offsetYSlider.addEventListener('input', function (e) {
+            config.offsetY = parseInt(e.target.value, 10);
+            applyAndSave();
+        });
+
+        document.querySelectorAll('.preset').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const w = parseInt(btn.dataset.w, 10);
+                const h = parseInt(btn.dataset.h, 10);
+                config.width  = w || window.innerWidth;
+                config.height = h || window.innerHeight;
+                config.zoom = 100;
+                config.offsetX = 0;
+                config.offsetY = 0;
+                applyAndSave();
+            });
+        });
+
+        fitContainBtn.addEventListener('click', function () {
+            config.fit = 'contain';
+            applyAndSave();
+        });
+
+        fitCoverBtn.addEventListener('click', function () {
+            config.fit = 'cover';
+            applyAndSave();
+        });
+
+        centerBtn.addEventListener('click', function () {
+            config.offsetX = 0;
+            config.offsetY = 0;
+            applyAndSave();
+        });
+
+        reloadBtn.addEventListener('click', reloadFrame);
+
+        openBtn.addEventListener('click', function () {
             modal.classList.add('active');
+            applyAndSave();
         });
 
-        closeBtn.addEventListener('click', () => {
+        closeBtn.addEventListener('click', function () {
             if (urlInput.value !== config.url) {
                 urlInput.dispatchEvent(new Event('change'));
             }
             modal.classList.remove('active');
         });
 
-        resetBtn.addEventListener('click', () => {
+        resetBtn.addEventListener('click', function () {
             config = { ...DEFAULTS };
             applyAndSave();
         });
 
-        // Quando o iframe acaba de carregar/redirecionar
-        frame.addEventListener('load', updateUrlLabel);
+        frame.addEventListener('load', function () {
+            applyAndSave();
+        });
 
-        window.addEventListener('resize', applyAndSave);
-        window.addEventListener('load', applyAndSave);
+        // Resize com debounce: o browser do Tesla dispara vários eventos seguidos.
+        let resizeTimer = null;
+        window.addEventListener('resize', function () {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(applyAndSave, 150);
+        });
+
+        applyAndSave();
     </script>
 
 </body>
