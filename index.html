@@ -85,6 +85,8 @@
             left: 50%;
             transform: translateX(-50%);
             display: flex;
+            flex-direction: column;   /* botões empilhados: um em cima do outro */
+            align-items: stretch;     /* mesma largura para ambos */
             gap: 6px;
             z-index: 9999;
             touch-action: none;   /* necessário para o arrasto por pointer */
@@ -114,13 +116,13 @@
         }
 
         .dock-menu {
-            width: 58px;
             font-size: 14px;
             font-weight: 600;
             letter-spacing: 3px;
         }
 
-        .dock-reload { width: 42px; }
+        /* Largura comum aos dois botões, definida uma só vez no conjunto. */
+        .dock { width: 58px; }
 
         .dock-btn:active {
             transform: scale(0.94);
