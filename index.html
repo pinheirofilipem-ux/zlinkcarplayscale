@@ -13,6 +13,7 @@
     <style>
         :root {
             --bg:            #000000;
+            --bg0:           rgba(0, 0, 0, 0);
             --panel:         #16181A;
             --sunken:        #101214;
             --control:       #232629;
@@ -25,6 +26,40 @@
             --line:          rgba(255, 255, 255, 0.07);
             --accent:        #3E6AE1;
             --ok:            #45C165;
+            --scrim:         rgba(0, 0, 0, 0.82);
+            --slider-fill:   #E8EAEC;
+            --slider-fill-off: #3B4045;
+            --handle-bg:      rgba(18, 20, 22, 0.30);
+            --handle-bg-active: rgba(35, 38, 41, 0.92);
+            --handle-border:  rgba(255, 255, 255, 0.09);
+            --handle-ink:     rgba(255, 255, 255, 0.42);
+            --handle-ink-active: rgba(255, 255, 255, 0.95);
+        }
+
+        /* Tema claro: mesmos tokens, valores claros. O body ganha .light. */
+        body.light {
+            --bg:            #E9EBEE;
+            --bg0:           rgba(233, 235, 238, 0);
+            --panel:         #FFFFFF;
+            --sunken:        #EEF0F3;
+            --control:       #E2E5E9;
+            --control-on:    #C9CED4;
+            --track:         #D7DBE0;
+            --fill:          #1B1E22;
+            --text:          #14171A;
+            --text-dim:      #5B6169;
+            --text-faint:    #8A9099;
+            --line:          rgba(0, 0, 0, 0.10);
+            --accent:        #3E6AE1;
+            --ok:            #2FA84F;
+            --scrim:         rgba(120, 125, 132, 0.55);
+            --slider-fill:   #3E6AE1;
+            --slider-fill-off: #B7BCC3;
+            --handle-bg:      rgba(255, 255, 255, 0.62);
+            --handle-bg-active: rgba(255, 255, 255, 0.95);
+            --handle-border:  rgba(0, 0, 0, 0.12);
+            --handle-ink:     rgba(20, 23, 26, 0.62);
+            --handle-ink-active: rgba(20, 23, 26, 0.95);
         }
 
         * {
@@ -77,6 +112,29 @@
             background: #000;
         }
 
+        /* Moldura de overlay: tapa a zona preta à volta do stream do CarPlay.
+           Técnica do "buraco arredondado": o elemento é um retângulo de cantos
+           redondos DO TAMANHO da área visível (stream menos a espessura), com o
+           centro transparente, e um box-shadow gigante da cor do fundo que
+           preenche tudo à volta (recortado pelo overflow do contentor). Uma só
+           aresta arredondada limpa — sem contorno quadrado nem duas curvas
+           sobrepostas, por isso não há "sombra" nas curvas. Não interceta toques.
+           Recebe a MESMA geometria (translate/scale) do iframe. */
+        .frame-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform-origin: center center;
+            pointer-events: none;
+            z-index: 9000;
+            background: transparent;
+            border-radius: var(--ovr, 0px);
+            box-shadow: 0 0 0 9999px var(--ovcolor, var(--bg));
+            transition: box-shadow 0.12s linear;
+        }
+        /* Sem espessura nem raio, não há nada a tapar: esconde o overlay. */
+        .frame-overlay.off { box-shadow: none; }
+
         /* ---------- Dock flutuante (reload + menu), reposicionável ---------- */
 
         .dock {
@@ -86,8 +144,9 @@
             transform: translateX(-50%);
             display: flex;
             flex-direction: column;   /* botões empilhados: um em cima do outro */
-            align-items: stretch;     /* mesma largura para ambos */
-            gap: 6px;
+            align-items: stretch;     /* mesma largura para todos */
+            width: calc(58px * var(--dscale, 1));   /* largura comum, escalável */
+            gap: calc(6px * var(--dscale, 1));
             z-index: 9999;
             touch-action: none;   /* necessário para o arrasto por pointer */
         }
@@ -103,35 +162,47 @@
         }
 
         .dock-btn {
-            height: 30px;
-            background: rgba(18, 20, 22, 0.30);
-            border: 1px solid rgba(255, 255, 255, 0.09);
-            border-radius: 15px;
-            color: rgba(255, 255, 255, 0.42);
+            height: calc(34px * var(--dscale, 1));
+            background: var(--handle-bg);
+            border: 1px solid var(--handle-border);
+            border-radius: calc(15px * var(--dscale, 1));
+            color: var(--handle-ink);
             display: flex;
             align-items: center;
             justify-content: center;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
-            transition: background 0.15s ease, color 0.15s ease;
+            transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+        }
+
+        /* O CSS width vence os atributos width/height do SVG, por isso os ícones
+           escalam com o dock. */
+        .dock-btn svg {
+            width: calc(18px * var(--dscale, 1));
+            height: auto;
         }
 
         .dock-menu {
-            font-size: 14px;
+            font-size: calc(14px * var(--dscale, 1));
             font-weight: 600;
             letter-spacing: 3px;
         }
 
-        /* Largura comum aos dois botões, definida uma só vez no conjunto. */
-        .dock { width: 58px; }
-
         .dock-btn:active {
             transform: scale(0.94);
-            background: rgba(35, 38, 41, 0.92);
-            color: rgba(255, 255, 255, 0.95);
+            background: var(--handle-bg-active);
+            color: var(--handle-ink-active);
         }
 
         .dock-reload.spin svg { animation: spin 0.6s linear; }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Ícone do botão de tema: sol em modo claro, lua em modo escuro. */
+        /* Ícone do botão de tema: lua no escuro, sol no claro.
+           Sem display inline — a visibilidade é controlada só por estas regras. */
+        .dock-theme .ic-moon { display: block; }
+        .dock-theme .ic-sun  { display: none; }
+        body.light .dock-theme .ic-moon { display: none; }
+        body.light .dock-theme .ic-sun  { display: block; }
 
         /* ---------- Banner do modo reposicionar ---------- */
 
@@ -156,6 +227,69 @@
 
         .move-banner.show { display: flex; }
 
+        /* Linha do seletor de cor da moldura. */
+        .color-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .color-row input[type=color] {
+            flex: 0 0 auto;
+            width: 52px;
+            height: 44px;
+            padding: 0;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: var(--control);
+            cursor: pointer;
+        }
+        .color-row input[type=color]::-webkit-color-swatch-wrapper { padding: 4px; }
+        .color-row input[type=color]::-webkit-color-swatch { border: none; border-radius: 6px; }
+
+        .color-hex {
+            flex: 1 1 auto;
+            text-transform: uppercase;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .color-reset { flex: 0 0 auto; }
+
+        /* Stepper de tamanho dos botões, dentro do banner. */
+        .move-scale {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding-right: 4px;
+            border-right: 1px solid var(--line);
+            margin-right: 4px;
+        }
+
+        .move-scale-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            background: var(--control);
+            color: var(--text);
+            font-size: 18px;
+            font-weight: 600;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .move-scale-btn:active { background: var(--control-on); }
+
+        .move-scale-val {
+            min-width: 42px;
+            text-align: center;
+            font-variant-numeric: tabular-nums;
+            color: var(--text);
+            font-weight: 600;
+        }
+
         .move-done {
             flex: 0 0 auto;
             background: var(--accent);
@@ -173,7 +307,7 @@
         .scrim {
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.82);
+            background: var(--scrim);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -507,9 +641,25 @@
             </svg>
         </button>
         <button class="dock-btn dock-menu" id="openBtn" aria-label="Definições">•••</button>
+        <button class="dock-btn dock-theme" id="themeBtn" aria-label="Modo claro/escuro">
+            <svg class="ic-moon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                <path d="M20 14.5A8 8 0 0 1 9.5 4a7 7 0 1 0 10.5 10.5z" fill="currentColor"/>
+            </svg>
+            <svg class="ic-sun" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                <circle cx="12" cy="12" r="4.2" fill="currentColor"/>
+                <g stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/>
+                </g>
+            </svg>
+        </button>
     </div>
 
     <div class="move-banner" id="moveBanner">
+        <div class="move-scale">
+            <button class="move-scale-btn" id="scaleDown" aria-label="Diminuir botões">−</button>
+            <span class="move-scale-val" id="scaleVal">100%</span>
+            <button class="move-scale-btn" id="scaleUp" aria-label="Aumentar botões">+</button>
+        </div>
         <span>Arrasta os botões para a posição que preferires</span>
         <button class="move-done" id="moveDone">Concluir</button>
     </div>
@@ -579,6 +729,38 @@
                         <button class="mini" id="dockReset">Centrar em baixo</button>
                     </div>
                     <div class="note">Em "Reposicionar", arrasta o conjunto ↻ ••• para onde quiseres; a posição fica guardada. Volta a "Fixos" para bloquear e não mexer sem querer.</div>
+                </div>
+
+                <div class="row">
+                    <div class="row-label"><span>Tema</span></div>
+                    <div class="seg">
+                        <button class="seg-btn" id="themeDark">Escuro</button>
+                        <button class="seg-btn" id="themeLight">Claro</button>
+                    </div>
+                    <div class="note">Aplica-se aos botões, ao painel e ao tint de fundo. Também alternável pelo botão no ecrã, por baixo do menu.</div>
+                </div>
+
+                <div class="row">
+                    <div class="row-label">
+                        <span>Moldura — espessura</span>
+                        <span class="val" id="overlayThicknessVal">0px</span>
+                    </div>
+                    <input type="range" class="slider" id="overlayThicknessSlider" min="0" max="120" step="1" value="0">
+                    <div class="row-label" style="margin-top:14px">
+                        <span>Moldura — raio dos cantos</span>
+                        <span class="val" id="overlayRadiusVal">0px</span>
+                    </div>
+                    <input type="range" class="slider" id="overlayRadiusSlider" min="0" max="160" step="1" value="0">
+                    <div class="row-label" style="margin-top:14px">
+                        <span>Cor da moldura (modo claro)</span>
+                        <span class="val" id="overlayColorVal">#E9EBEE</span>
+                    </div>
+                    <div class="color-row">
+                        <input type="color" id="overlayColorPicker" value="#E9EBEE">
+                        <input type="text" class="field color-hex" id="overlayColorHex" value="#E9EBEE" spellcheck="false" maxlength="7">
+                        <button class="mini color-reset" id="overlayColorReset">Repor</button>
+                    </div>
+                    <div class="note">Só afeta a moldura em modo claro — escolhe o cinzento mais próximo do fundo do Tesla. Em modo escuro a moldura mantém-se preta. Espessura e raio a 0 desligam a moldura.</div>
                 </div>
 
                 <div class="row">
@@ -676,6 +858,8 @@
                 allow="autoplay; fullscreen; encrypted-media; microphone; accelerometer; gyroscope"
                 allowfullscreen
                 scrolling="no"></iframe>
+        <!-- Moldura colada ao stream: mesma geometria do iframe. -->
+        <div class="frame-overlay" id="frameOverlay"></div>
     </div>
 
     <script>
@@ -688,8 +872,24 @@
         const dock = document.getElementById('dock');
         const quickReloadBtn = document.getElementById('quickReload');
         const openBtn = document.getElementById('openBtn');
+        const themeBtn = document.getElementById('themeBtn');
         const moveBanner = document.getElementById('moveBanner');
         const moveDoneBtn = document.getElementById('moveDone');
+        const scaleDownBtn = document.getElementById('scaleDown');
+        const scaleUpBtn = document.getElementById('scaleUp');
+        const scaleVal = document.getElementById('scaleVal');
+
+        const frameOverlay = document.getElementById('frameOverlay');
+        const themeDarkBtn = document.getElementById('themeDark');
+        const themeLightBtn = document.getElementById('themeLight');
+        const overlayThicknessSlider = document.getElementById('overlayThicknessSlider');
+        const overlayRadiusSlider = document.getElementById('overlayRadiusSlider');
+        const overlayThicknessVal = document.getElementById('overlayThicknessVal');
+        const overlayRadiusVal = document.getElementById('overlayRadiusVal');
+        const overlayColorPicker = document.getElementById('overlayColorPicker');
+        const overlayColorHex = document.getElementById('overlayColorHex');
+        const overlayColorVal = document.getElementById('overlayColorVal');
+        const overlayColorReset = document.getElementById('overlayColorReset');
 
         const closeXBtn = document.getElementById('closeXBtn');
         const doneBtn = document.getElementById('doneBtn');
@@ -751,6 +951,11 @@
             showReadout: false,
             autoReloadMs: 0,
             dockPos: null,          // null = canto inferior central; senão {x, y}
+            dockScale: 1,           // escala dos botões do dock (0.6–2.2)
+            theme: 'dark',          // 'dark' | 'light'
+            overlayThickness: 0,    // px, espessura da moldura (0 = desligada)
+            overlayRadius: 0,       // px, raio dos cantos da moldura
+            overlayColorLight: '#E9EBEE',  // cor da moldura em modo claro
             savedAt: null
         };
 
@@ -807,9 +1012,13 @@
             const min = parseFloat(el.min);
             const max = parseFloat(el.max);
             const pct = ((parseFloat(el.value) - min) / (max - min)) * 100;
-            const fill = el.disabled ? '#3B4045' : '#E8EAEC';
+            const css = getComputedStyle(document.documentElement);
+            const fillOn = getComputedStyle(document.body).getPropertyValue('--slider-fill').trim() || '#E8EAEC';
+            const fillOff = getComputedStyle(document.body).getPropertyValue('--slider-fill-off').trim() || '#3B4045';
+            const track = getComputedStyle(document.body).getPropertyValue('--track').trim() || '#232629';
+            const fill = el.disabled ? fillOff : fillOn;
             el.style.background =
-                'linear-gradient(to right, ' + fill + ' 0%, ' + fill + ' ' + pct + '%, #232629 ' + pct + '%, #232629 100%)';
+                'linear-gradient(to right, ' + fill + ' 0%, ' + fill + ' ' + pct + '%, ' + track + ' ' + pct + '%, ' + track + ' 100%)';
         }
 
         // ---- Dock: reload player + reposicionamento ----
@@ -819,6 +1028,13 @@
         function boxMessage(id, extra) {
             try { frame.contentWindow.postMessage(Object.assign({ id: id }, extra || {}), '*'); }
             catch (e) { /* iframe ainda não pronto */ }
+        }
+
+        function applyDockScale() {
+            const sc = clamp(config.dockScale || 1, 0.6, 2.2);
+            config.dockScale = sc;
+            dock.style.setProperty('--dscale', sc);
+            if (scaleVal) scaleVal.textContent = Math.round(sc * 100) + '%';
         }
 
         function applyDockPos() {
@@ -921,6 +1137,57 @@
             refreshReadout();
         }
 
+        // ---- Tema (claro/escuro) ----
+
+        function applyTheme() {
+            document.body.classList.toggle('light', config.theme === 'light');
+            themeDarkBtn && themeDarkBtn.classList.toggle('on', config.theme !== 'light');
+            themeLightBtn && themeLightBtn.classList.toggle('on', config.theme === 'light');
+            // Os sliders leem cores via tokens do tema; repinta-os após a troca.
+            allSliders.forEach(paintSlider);
+            applyOverlayColor();
+        }
+
+        // Cor da moldura: personalizada só em modo claro; em escuro fica a preto
+        // (o token --bg do tema). Aplica-se via --ovcolor no próprio overlay.
+        function applyOverlayColor() {
+            if (config.theme === 'light') {
+                frameOverlay.style.setProperty('--ovcolor', config.overlayColorLight);
+            } else {
+                frameOverlay.style.removeProperty('--ovcolor');
+            }
+            if (overlayColorPicker) overlayColorPicker.value = config.overlayColorLight;
+            if (overlayColorHex) overlayColorHex.value = config.overlayColorLight.toUpperCase();
+            if (overlayColorVal) overlayColorVal.textContent = config.overlayColorLight.toUpperCase();
+        }
+
+        // ---- Moldura: buraco arredondado sobre o stream ----
+        // O overlay é um retângulo do tamanho da ÁREA VISÍVEL (stream menos a
+        // espessura em cada lado), cantos redondos = raio, centro transparente; o
+        // box-shadow gigante da cor do fundo preenche tudo à volta. Recebe a mesma
+        // geometria do iframe (transform), por isso assenta sobre o conteúdo.
+        function applyOverlay(finalScale) {
+            const s = finalScale || 1;
+            const tU = config.overlayThickness / s;   // espessura em coords não-escaladas
+            const rU = config.overlayRadius / s;      // raio em coords não-escaladas
+
+            const w = Math.max(0, config.width  - 2 * tU);
+            const h = Math.max(0, config.height - 2 * tU);
+            frameOverlay.style.width  = w + 'px';
+            frameOverlay.style.height = h + 'px';
+            frameOverlay.style.transform =
+                'translate(-50%, -50%) translate(' + config.offsetX + 'px, ' + config.offsetY + 'px) scale(' + s + ')';
+            frameOverlay.style.setProperty('--ovr', rU + 'px');
+
+            // Sem espessura e sem raio não há nada a tapar → desliga o overlay.
+            frameOverlay.classList.toggle('off', config.overlayThickness === 0 && config.overlayRadius === 0);
+
+            overlayThicknessVal.textContent = config.overlayThickness + 'px';
+            overlayRadiusVal.textContent = config.overlayRadius + 'px';
+            overlayThicknessSlider.value = config.overlayThickness;
+            overlayRadiusSlider.value = config.overlayRadius;
+        }
+
         function applyAndSave() {
             if (loadedUrl !== config.url) {
                 loadedUrl = config.url;
@@ -956,6 +1223,7 @@
 
             refreshActiveStates();
             allSliders.forEach(paintSlider);
+            applyOverlay(finalScale);
             persist();
             updateStatus(finalScale);
         }
@@ -995,6 +1263,52 @@
             openPanel();
         });
 
+        function toggleTheme() {
+            config.theme = (config.theme === 'light') ? 'dark' : 'light';
+            applyTheme();
+            persist();
+        }
+        themeBtn.addEventListener('click', function () {
+            if (moveMode) return;
+            toggleTheme();
+        });
+        themeDarkBtn.addEventListener('click', function () {
+            config.theme = 'dark'; applyTheme(); persist();
+        });
+        themeLightBtn.addEventListener('click', function () {
+            config.theme = 'light'; applyTheme(); persist();
+        });
+
+        overlayThicknessSlider.addEventListener('input', function (e) {
+            config.overlayThickness = parseInt(e.target.value, 10);
+            applyAndSave();
+        });
+        overlayRadiusSlider.addEventListener('input', function (e) {
+            config.overlayRadius = parseInt(e.target.value, 10);
+            applyAndSave();
+        });
+
+        // Cor da moldura (modo claro): picker + campo hex sincronizados.
+        function setOverlayColor(hex) {
+            hex = (hex || '').trim();
+            if (!/^#?[0-9a-fA-F]{6}$/.test(hex)) return false;
+            if (hex[0] !== '#') hex = '#' + hex;
+            config.overlayColorLight = hex.toLowerCase();
+            applyOverlayColor();   // visível de imediato se estiver em modo claro
+            persist();
+            return true;
+        }
+        overlayColorPicker.addEventListener('input', function (e) { setOverlayColor(e.target.value); });
+        overlayColorHex.addEventListener('change', function (e) {
+            if (!setOverlayColor(e.target.value)) {
+                // valor inválido: repõe o mostrado
+                e.target.value = config.overlayColorLight.toUpperCase();
+            }
+        });
+        overlayColorReset.addEventListener('click', function () {
+            setOverlayColor('#E9EBEE');
+        });
+
         // ---- Dock: arrasto (só em modo mover) ----
 
         let dragging = false, startX = 0, startY = 0, origX = 0, origY = 0;
@@ -1029,6 +1343,15 @@
         dock.addEventListener('pointercancel', endDrag);
 
         moveDoneBtn.addEventListener('click', function () { setMoveMode(false); });
+
+        function nudgeScale(delta) {
+            config.dockScale = clamp((config.dockScale || 1) + delta, 0.6, 2.2);
+            applyDockScale();
+            applyDockPos();   // o tamanho mudou; reavalia o clamp da posição
+            persist();
+        }
+        scaleDownBtn.addEventListener('click', function () { nudgeScale(-0.1); });
+        scaleUpBtn.addEventListener('click', function () { nudgeScale(0.1); });
 
         // ---- Painel: dock ----
 
@@ -1163,14 +1486,19 @@
         clearBtn.addEventListener('click', function () {
             try { localStorage.removeItem(STORAGE_KEY); } catch (e) { /* ignorar */ }
             config = { ...DEFAULTS };
+            applyTheme();
+            applyDockScale();
             applyAndSave();
             applyDockPos();
             applyAutoReload();
         });
 
         resetBtn.addEventListener('click', function () {
-            const keepDock = config.dockPos;   // manter a posição do dock ao repor
-            config = { ...DEFAULTS, dockPos: keepDock };
+            const keepDock = config.dockPos;         // manter posição do dock ao repor
+            const keepScale = config.dockScale;      // e o tamanho dos botões
+            config = { ...DEFAULTS, dockPos: keepDock, dockScale: keepScale };
+            applyTheme();
+            applyDockScale();
             applyAndSave();
             applyAutoReload();
         });
@@ -1188,6 +1516,8 @@
             }, 150);
         });
 
+        applyTheme();
+        applyDockScale();
         applyAndSave();
         applyDockPos();
         applyAutoReload();
